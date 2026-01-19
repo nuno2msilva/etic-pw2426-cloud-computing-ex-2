@@ -29,16 +29,18 @@ You access it at https://localhost:8443/ (prod) or https://localhost:8443/dev/ (
 
 ## How to use this project:
 
-**Quick start:** Just run `make start` and it sets up everything for you.
+**Quick start:** Just run `make run` and it sets up everything for you.
 
 **What happens:**
-1. Creates a Minikube cluster
-2. Deploys dev environment (2 nodes, 2 replicas each)  
-3. Deploys prod environment (3 nodes, more replicas)
-4. You can access the apps at the URLs above
+1. Initializes Terraform 
+2. Creates a Minikube cluster
+3. Deploys dev environment (2 nodes, 2 replicas each)  
+4. Deploys prod environment (3 nodes, more replicas)
+5. You can access the apps at the URLs above
 
 **Useful commands:**
-- `make start` - Deploy everything
+- `make run` - Initialize and deploy everything (complete setup)
+- `make start` - Deploy everything (if already initialized)
 - `make test` - Check if it's working
 - `make pods` - See what's running
 - `make dev` - Deploy just dev environment
