@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple User Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; margin-bottom: 30px; color: #333; font-weight: 300; }
+        .form { margin-bottom: 30px; }
+        .input-group { margin-bottom: 15px; }
+        input, textarea { width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; }
+        input:focus, textarea:focus { outline: none; border-color: #007bff; }
+        .btn { background: #007bff; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background: #0056b3; }
+        .btn-small { padding: 6px 12px; font-size: 12px; margin-left: 8px; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-confirm { background: #ffc107; color: #000; }
+        .btn-confirm:hover { background: #e0a800; }
+        .users { margin-top: 30px; }
+        .user { display: flex; justify-content: space-between; align-items: center; padding: 15px; margin: 10px 0; background: #f8f9fa; border-radius: 8px; }
+        .user-info h4 { margin-bottom: 4px; color: #333; }
+        .user-info p { color: #666; font-size: 14px; }
+        .user-info small { color: #999; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 8px; text-align: center; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .empty { text-align: center; color: #999; padding: 40px; }
+        .footer { margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center; font-size: 12px; color: #666; }
+        .footer .env { font-weight: bold; color: #007bff; text-transform: uppercase; }
+        .footer .env.prod { color: #28a745; }
+        .footer .env.dev { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Manager</h1>
+        
+        <div class="form">
+            <div class="input-group">
+                <input type="text" id="name" placeholder="Your name">
+            </div>
+            <div class="input-group">
+                <textarea id="message" rows="3" placeholder="Your message"></textarea>
+            </div>
+            <button class="btn" onclick="addUser()">Add User</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <div class="users">
+            <div id="users"></div>
+        </div>
+
+        <div class="footer">
+            Environment: <span id="env-name" class="env">loading...</span> |
+            Node: <span id="node-name">loading...</span> |
+            Pod: <span id="pod-name">loading...</span>
+        </div>
+    </div>
+
+    <script>
+        // Auto-detect base path from URL (dev at /dev/, prod at /)
+        const basePath = window.location.pathname.startsWith('/dev') ? '/dev' : '';
+        const API_BASE = `${basePath}/api`;
+        let users = [];
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/users`);
+                users = await response.json();
+                renderUsers();
+            } catch (error) {
+                showStatus('Error loading users', 'error');
+            }
+        }
+
+        function renderUsers() {
+            const usersDiv = document.getElementById('users');
+            if (users.length === 0) {
+                usersDiv.innerHTML = '<div class="empty">No users yet. Add one above!</div>';
+                return;
+            }
+
+            usersDiv.innerHTML = users.map(user => 
+                `<div class="user">
+                    <div class="user-info">
+                        <h4>${user.name}</h4>
+                        <p>${user.message}</p>
+                        <small>ID: ${user.id}</small>
+                    </div>
+                    <div id="actions-${user.id}">
+                        <button class="btn btn-small btn-danger" onclick="showDeleteConfirm(${user.id})">Delete</button>
+                    </div>
+                </div>`
+            ).join('');
+        }
+
+        function showDeleteConfirm(userId) {
+            const actionsDiv = document.getElementById(`actions-${userId}`);
+            actionsDiv.innerHTML = `
+                <button class="btn btn-small btn-confirm" onclick="deleteUser(${userId})">Confirm</button>
+                <button class="btn btn-small" onclick="renderUsers()">Cancel</button>
+            `;
+        }
+
+        async function addUser() {
+            const name = document.getElementById('name').value.trim();
+            const message = document.getElementById('message').value.trim();
+            
+            if (!name || !message) {
+                showStatus('Please fill both fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, message })
+                });
+
+                if (response.ok) {
+                    showStatus('User added successfully!', 'success');
+                    document.getElementById('name').value = '';
+                    document.getElementById('message').value = '';
+                    loadUsers();
+                } else {
+                    showStatus('Failed to add user', 'error');
+                }
+            } catch (error) {
+                showStatus('Error adding user', 'error');
+            }
+        }
+
+        async function deleteUser(userId) {
+            try {
+                const response = await fetch(`${API_BASE}/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showStatus('User deleted successfully!', 'success');
+                    loadUsers();
+                } else {
+                    showStatus('Failed to delete user', 'error');
+                }
+            } catch (error) {
+                showStatus('Error deleting user', 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        }
+
+        async function loadInfo() {
+            // Set environment from URL
+            const env = basePath === '/dev' ? 'dev' : 'prod';
+            const envSpan = document.getElementById('env-name');
+            envSpan.textContent = env;
+            envSpan.className = `env ${env}`;
+
+            // Load cluster info from API
+            try {
+                const response = await fetch(`${API_BASE}/info`);
+                const info = await response.json();
+                document.getElementById('node-name').textContent = info.node_name || 'unknown';
+                document.getElementById('pod-name').textContent = info.hostname || 'unknown';
+            } catch (error) {
+                document.getElementById('node-name').textContent = 'unavailable';
+                document.getElementById('pod-name').textContent = 'unavailable';
+            }
+        }
+
+        // Load users on page load
+        loadUsers();
+        loadInfo();
+    </script>
+</body>
+</html>
